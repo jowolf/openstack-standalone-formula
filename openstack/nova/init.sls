@@ -6,8 +6,18 @@ include:
   - openstack.glance
 
 openstack-nova:
-  pkg:
-    - installed
+  pkg.installed:
+    - names:
+      - nova-api 
+      - nova-cert 
+      - nova-conductor 
+      - nova-consoleauth 
+      - nova-novncproxy 
+      - nova-scheduler 
+      - python-novaclient 
+      - nova-compute 
+      - nova-console
+
 
 nova-support:
   service:
