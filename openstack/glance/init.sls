@@ -3,6 +3,7 @@ include:
 
 openstack-glance:
   pkg:
+    - name: glance
     - installed
 
 glance-db-init:
