@@ -36,7 +36,7 @@ nova-db-init:
     - unless: echo '' | mysql nova
     - require:
       - pkg: openstack-nova
-      - service: mysqld
+      - service: mysql
 
 nova-services:
   service:
