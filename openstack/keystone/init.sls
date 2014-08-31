@@ -17,6 +17,7 @@ openstack-keystone:
       - cmd: keystone-db-init
       - file: /etc/keystone
   pkg:
+    - name: keystone
     - installed
 
 /etc/keystone:
