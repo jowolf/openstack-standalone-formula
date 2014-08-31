@@ -1,5 +1,5 @@
 include:
-  - epel
+  #- epel
   - mysql.server
   - qpid.server
   - openstack.keystone
