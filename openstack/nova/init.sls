@@ -24,7 +24,7 @@ nova-support:
     - running
     - enable: True
     - names:
-      - mysqld
+      - mysql
       - qpidd
       - libvirtd
       - messagebus
