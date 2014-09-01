@@ -52,7 +52,7 @@ nova-services:
       - nova-objectstore
       - nova-compute
       - nova-network
-      - nova-volume
+      #- nova-volume
       - nova-scheduler
       - nova-cert
     - watch:
