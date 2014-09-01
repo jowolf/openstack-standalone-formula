@@ -21,6 +21,7 @@ openstack-nova:
       - nova-console
       - nova-volume
       - nova-network
+      - nova-objectstore
 
 
 nova-support:
