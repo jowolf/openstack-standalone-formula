@@ -1,8 +1,10 @@
+{% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
+
 keystone-db-init:
   cmd:
     - run
-    - name: openstack-db --init --service keystone --rootpw ''
-    - unless: echo '' | mysql keystone
+    - name: openstack-db --init --service keystone --rootpw '{{ mysql_root_password }}'
+    - unless: echo '' | mysql keystone --password='{{ mysql_root_password }}'
     - require:
       - pkg: openstack-keystone
       - service: mysqld
