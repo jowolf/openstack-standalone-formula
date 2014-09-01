@@ -22,8 +22,8 @@ glance-services:
     - running
     - enable: True
     - names:
-      - openstack-glance-api
-      - openstack-glance-registry
+      - glance-api
+      - glance-registry
     - require:
       - pkg: openstack-glance
       - cmd: glance-db-init
