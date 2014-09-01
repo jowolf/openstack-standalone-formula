@@ -19,6 +19,8 @@ openstack-nova:
       - python-novaclient 
       - nova-compute 
       - nova-console
+      - nova-volume
+      - nova-network
 
 
 nova-support:
