@@ -11,6 +11,7 @@ keystone-db-init:
 
 openstack-keystone:
   service:
+    - name: keystone
     - running
     - enable: True
     - require:
