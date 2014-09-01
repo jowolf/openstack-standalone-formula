@@ -7,7 +7,7 @@
     'name': 'openstack-dashboard',
     'wsgi_conf': '/etc/httpd/conf.d/openstack-dashboard.conf',
   },
-}), merge=salt['pillar.get']('apache:lookup')) %}
+}, merge=salt['pillar.get']('apache:lookup')) %}
 
 include:
   - apache
