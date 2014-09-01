@@ -28,8 +28,8 @@ nova-support:
     - names:
       - mysql
       - qpidd
-      - libvirtd
-      - messagebus
+      - libvirt-bin
+      - dbus
 
 nova-db-init:
   cmd:
