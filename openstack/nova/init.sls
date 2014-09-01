@@ -1,3 +1,5 @@
+{% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
+
 include:
   #- epel
   - mysql.server
@@ -32,8 +34,8 @@ nova-support:
 nova-db-init:
   cmd:
     - run
-    - name: openstack-db --init --service nova --rootpw ''
-    - unless: echo '' | mysql nova
+    - name: openstack-db --init --service nova --rootpw '{{ mysql_root_password }}'
+    - unless: echo '' | mysql nova --password='{{ mysql_root_password }}'
     - require:
       - pkg: openstack-nova
       - service: mysql
