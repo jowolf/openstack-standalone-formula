@@ -1,3 +1,5 @@
+{% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
+
 include:
   - mysql.server
 
@@ -9,8 +11,8 @@ openstack-glance:
 glance-db-init:
   cmd:
     - run
-    - name: openstack-db --init --service glance --rootpw ''
-    - unless: echo '' | mysql glance
+    - name: openstack-db --init --service glance --rootpw '{{ mysql_root_password }}'
+    - unless: echo '' | mysql glance --password='{{ mysql_root_password }}'
     - require:
       - pkg: openstack-glance
       - service: mysqld
