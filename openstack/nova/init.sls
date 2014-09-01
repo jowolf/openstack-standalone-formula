@@ -45,13 +45,13 @@ nova-services:
     - running
     - enable: True
     - names:
-      - openstack-nova-api
-      - openstack-nova-objectstore
-      - openstack-nova-compute
-      - openstack-nova-network
-      - openstack-nova-volume
-      - openstack-nova-scheduler
-      - openstack-nova-cert
+      - nova-api
+      - nova-objectstore
+      - nova-compute
+      - nova-network
+      - nova-volume
+      - nova-scheduler
+      - nova-cert
     - watch:
       - cmd: nova-db-init
       - cmd: keystone-db-init
