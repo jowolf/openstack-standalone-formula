@@ -17,6 +17,7 @@ openstack-nova:
       - nova-novncproxy 
       - nova-scheduler 
       - python-novaclient 
+      - python-mysqldb
       - nova-compute 
       - nova-console
       #- nova-volume
