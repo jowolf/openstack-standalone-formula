@@ -44,7 +44,7 @@ keystone-service-create:
         export OS_SERVICE_ENDPOINT=http://{{ salt['pillar.get']('keystone:bind_host', '0.0.0.0') }}:35357/v2.0
         keystone service-create --name=keystone --type=identity --description="Keystone Identity Service"
         #keystone endpoint-create --service=keystone --publicurl=http://10.0.0.1:5000/v2.0 --internalurl=http://10.0.0.1:5000/v2.0 --adminurl=http://10.0.0.1:35357/v2.0
-    - unless: keystone service-get keystone
+    - unless: keystone service-list | grep identity
     - require:
       - pkg: openstack-keystone
       - service: mysqld
