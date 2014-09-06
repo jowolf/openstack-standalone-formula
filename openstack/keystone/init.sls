@@ -9,7 +9,7 @@ keystone-db-init:
     - unless: echo '' | mysql keystone --password='{{ mysql_root_password }}'
     - require:
       - pkg: openstack-keystone
-      - service: mysql
+      - service: mysqld
 
 keystone-admin-create:
   cmd:
@@ -25,7 +25,7 @@ keystone-admin-create:
     - unless: keystone user-get admin
     - require:
       - pkg: openstack-keystone
-      - service: mysql
+      - service: mysqld
 
 keystone-service-create:
   cmd:
@@ -38,7 +38,7 @@ keystone-service-create:
     - unless: keystone service-get keystone
     - require:
       - pkg: openstack-keystone
-      - service: mysql
+      - service: mysqld
 
 openstack-keystone:
   service:
