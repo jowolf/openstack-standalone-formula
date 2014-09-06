@@ -1,4 +1,6 @@
 {% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
+#{{ salt['pillar.get']('keystone:admin_token', 'c195b883042b11f25916') }}
+#{{ salt['pillar.get']('keystone:bind_host', '0.0.0.0') }}
 
 keystone-db-init:
   cmd:
@@ -29,6 +31,8 @@ keystone-service-create:
   cmd:
     - run
     - name: |
+        export OS_SERVICE_TOKEN={{ salt['pillar.get']('keystone:admin_token', 'c195b883042b11f25916') }}
+        export OS_SERVICE_ENDPOINT=http://{{ salt['pillar.get']('keystone:bind_host', '0.0.0.0') }}:35357/v2.0
         keystone service-create --name=keystone --type=identity --description="Keystone Identity Service"
         #keystone endpoint-create --service=keystone --publicurl=http://10.0.0.1:5000/v2.0 --internalurl=http://10.0.0.1:5000/v2.0 --adminurl=http://10.0.0.1:35357/v2.0
     - require:
