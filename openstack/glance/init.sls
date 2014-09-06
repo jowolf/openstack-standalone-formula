@@ -22,7 +22,7 @@ glance-keystone-creates:
         keystone user-role-add --user=glance --tenant=service --role=admin
         keystone service-create --name=glance --type=image --description="Glance Image Service"
         keystone endpoint-create --service=glance --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ public_url }}
-    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} endpoint-get --service image
+    - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant admin endpoint-get --service image
     - require:
       - pkg: openstack-glance
       - service: mysqld
