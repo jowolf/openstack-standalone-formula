@@ -1,8 +1,8 @@
 {% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
 {% set bind_host = salt['pillar.get']('keystone:bind_host', '0.0.0.0') %}
 {% set admin_token = salt['pillar.get']('keystone:admin_token', 'c195b883042b11f25916') %}
-{% set admin_url = 'http://' + bind_host ' + ':35357/v2.0' %}
-{% set public_url = 'http://' + bind_host ' + ':5000/v2.0' %}
+{% set admin_url = 'http://' ~ bind_host ' ~ ':35357/v2.0' %}
+{% set public_url = 'http://' ~ bind_host ' ~ ':5000/v2.0' %}
 
 keystone-db-init:
   cmd:
