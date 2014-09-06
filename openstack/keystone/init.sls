@@ -17,7 +17,7 @@ keystone-db-sync:
   cmd:
     - run
     - name: keystone-manage db_sync
-    - unless: keystone service-list
+    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} service-list
     - require:
       - pkg: openstack-keystone
       - service: mysqld
@@ -33,7 +33,7 @@ keystone-admin-create:
         keystone user-create --name=admin --pass={{ salt['pillar.get']('keystone:admin_password', 'keystone') }} --email={{ salt['pillar.get']('keystone:admin_email', 'joe@eracks.com') }}
         keystone role-create --name=admin
         keystone user-role-add --user=admin --tenant=admin --role=admin
-    - unless: keystone user-get admin
+    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} user-get admin
     - require:
       - pkg: openstack-keystone
       - service: mysqld
@@ -45,7 +45,7 @@ keystone-service-create:
         export OS_SERVICE_TOKEN={{ admin_token }}
         export OS_SERVICE_ENDPOINT={{ admin_url }}
         keystone service-create --name=keystone --type=identity --description="Keystone Identity Service"
-    - unless: keystone service-list | grep identity
+    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} service-list | grep identity
     - require:
       - pkg: openstack-keystone
       - service: mysqld
@@ -57,7 +57,7 @@ keystone-endpoint-create:
         export OS_SERVICE_TOKEN={{ admin_token }}
         export OS_SERVICE_ENDPOINT={{ admin_url }}
         keystone endpoint-create --service=keystone --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ admin_url }}
-    - unless: keystone endpoint-list | grep keystone
+    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} endpoint-list | grep keystone
     - require:
       - pkg: openstack-keystone
       - service: mysqld
