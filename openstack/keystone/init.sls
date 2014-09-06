@@ -1,6 +1,7 @@
 {% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
 {% set bind_host = salt['pillar.get']('keystone:bind_host', '0.0.0.0') %}
 {% set admin_token = salt['pillar.get']('keystone:admin_token', 'c195b883042b11f25916') %}
+{% set admin_password = salt['pillar.get']('keystone:admin_password', 'keystone') %}
 {% set admin_url = 'http://' ~ bind_host ~ ':35357/v2.0' %}
 {% set public_url = 'http://' ~ bind_host ~ ':5000/v2.0' %}
 
@@ -30,10 +31,10 @@ keystone-admin-create:
         export OS_SERVICE_ENDPOINT={{ admin_url }}
         keystone tenant-create --name=admin --description="Admin Tenant"
         keystone tenant-create --name=service --description="Service Tenant"
-        keystone user-create --name=admin --pass={{ salt['pillar.get']('keystone:admin_password', 'keystone') }} --email={{ salt['pillar.get']('keystone:admin_email', 'joe@eracks.com') }}
+        keystone user-create --name=admin --pass={{ admin_password }} --email={{ salt['pillar.get']('keystone:admin_email', 'joe@eracks.com') }}
         keystone role-create --name=admin
         keystone user-role-add --user=admin --tenant=admin --role=admin
-    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} endpoint-get --service identity
+    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} user-list | grep admin
     - require:
       - pkg: openstack-keystone
       - service: mysqld
@@ -57,7 +58,7 @@ keystone-endpoint-create:
         export OS_SERVICE_TOKEN={{ admin_token }}
         export OS_SERVICE_ENDPOINT={{ admin_url }}
         keystone endpoint-create --service=keystone --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ admin_url }}
-    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} endpoint-list | grep keystone
+    - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant admin endpoint-get --service identity
     - require:
       - pkg: openstack-keystone
       - service: mysqld
