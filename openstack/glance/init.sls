@@ -17,13 +17,15 @@ glance-keystone-creates:
   cmd:
     - run
     - name: |
-        export OS_SERVICE_TOKEN={{ admin_token }}
-        export OS_SERVICE_ENDPOINT={{ admin_url }}
+        export OS_USERNAME=admin
+        export OS_PASSWORD={{ admin_password }}
+        export OS_AUTH_URL={{ admin_url }}
+        export OS_TENANT_NAME=admin
         keystone user-create --name=glance --pass={{ salt['pillar.get']('keystone:glance_password', 'glance') }} --email={{ salt['pillar.get']('keystone:glance_email', 'joe@eracks.com') }}
         keystone user-role-add --user=glance --tenant=service --role=admin
         keystone service-create --name=glance --type=image --description="Glance Image Service"
         keystone endpoint-create --service=glance --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ public_url }}
-    - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant admin endpoint-get --service image
+    - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin endpoint-get --service image
     - require:
       - pkg: openstack-glance
       - service: mysqld
