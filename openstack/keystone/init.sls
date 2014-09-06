@@ -33,7 +33,7 @@ keystone-admin-create:
         keystone user-create --name=admin --pass={{ salt['pillar.get']('keystone:admin_password', 'keystone') }} --email={{ salt['pillar.get']('keystone:admin_email', 'joe@eracks.com') }}
         keystone role-create --name=admin
         keystone user-role-add --user=admin --tenant=admin --role=admin
-    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} user-get admin
+    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} endpoint-get --service identity
     - require:
       - pkg: openstack-keystone
       - service: mysqld
