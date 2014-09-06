@@ -1,4 +1,8 @@
 {% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
+{% set bind_host = salt['pillar.get']('keystone:bind_host', '0.0.0.0') %}
+{% set admin_token = salt['pillar.get']('keystone:admin_token', 'c195b883042b11f25916') %}
+{% set admin_url = 'http://' ~ bind_host ~ ':35357/v2.0' %}
+{% set public_url = 'http://' ~ bind_host ~ ':9292' %}
 
 include:
   - mysql.server
@@ -7,6 +11,21 @@ openstack-glance:
   pkg:
     - name: glance
     - installed
+
+glance-keystone-creates:
+  cmd:
+    - run
+    - name: |
+        export OS_SERVICE_TOKEN={{ admin_token }}
+        export OS_SERVICE_ENDPOINT={{ admin_url }}
+        keystone user-create --name=glance --pass={{ salt['pillar.get']('keystone:glance_password', 'glance') }} --email={{ salt['pillar.get']('keystone:glance_email', 'joe@eracks.com') }}
+        keystone user-role-add --user=glance --tenant=service --role=admin
+        keystone service-create --name=glance --type=image --description="Glance Image Service"
+        keystone endpoint-create --service=glance --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ public_url }}
+    - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} endpoint-get --service image
+    - require:
+      - pkg: openstack-glance
+      - service: mysqld
 
 glance-db-init:
   cmd:
