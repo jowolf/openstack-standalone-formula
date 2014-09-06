@@ -58,7 +58,7 @@ keystone-endpoint-create:
         export OS_SERVICE_TOKEN={{ admin_token }}
         export OS_SERVICE_ENDPOINT={{ admin_url }}
         keystone endpoint-create --service=keystone --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ admin_url }}
-    - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant admin endpoint-get --service identity
+    - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin endpoint-get --service identity
     - require:
       - pkg: openstack-keystone
       - service: mysqld
