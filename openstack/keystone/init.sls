@@ -11,6 +11,15 @@ keystone-db-init:
       - pkg: openstack-keystone
       - service: mysqld
 
+keystone-db-sync:
+  cmd:
+    - run
+    - name: keystone-manage db_sync
+    - unless: keystone service-list
+    - require:
+      - pkg: openstack-keystone
+      - service: mysqld
+
 keystone-admin-create:
   cmd:
     - run
