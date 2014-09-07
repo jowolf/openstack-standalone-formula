@@ -23,6 +23,7 @@ openstack-nova:
       - nova-scheduler 
       - python-novaclient 
       - python-mysqldb
+      - python-qpid
       - nova-compute 
       - nova-console
       #- nova-volume
