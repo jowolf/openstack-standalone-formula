@@ -3,7 +3,7 @@
 {% set admin_token = salt['pillar.get']('keystone:admin_token', 'c195b883042b11f25916') %}
 {% set admin_password = salt['pillar.get']('keystone:admin_password', 'keystone') %}
 {% set admin_url = 'http://' ~ bind_host ~ ':35357/v2.0' %}
-{% set public_url = 'http://' ~ bind_host ~ ':8774/v2/service' %}
+{% set public_url = 'http://' ~ bind_host ~ ':8774/v2/%(tenant_id)s' %}
 
 include:
   #- epel
