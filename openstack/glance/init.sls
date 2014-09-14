@@ -4,6 +4,8 @@
 {% set admin_password = salt['pillar.get']('keystone:admin_password', 'keystone') %}
 {% set admin_url = 'http://' ~ bind_host ~ ':35357/v2.0' %}
 {% set public_url = 'http://' ~ bind_host ~ ':9292' %}
+{% set glance_email = salt['pillar.get']('keystone:glance_email', 'joe@eracks.com') %}
+{% set glance_password = salt['pillar.get']('keystone:glance_password', 'glance') %}
 
 include:
   - mysql.server
@@ -21,7 +23,7 @@ glance-keystone-creates:
         export OS_PASSWORD={{ admin_password }}
         export OS_AUTH_URL={{ admin_url }}
         export OS_TENANT_NAME=admin
-        keystone user-create --name=glance --pass={{ salt['pillar.get']('keystone:glance_password', 'glance') }} --email={{ salt['pillar.get']('keystone:glance_email', 'joe@eracks.com') }}
+        keystone user-create --name=glance --pass={{ glance_password }} --email={{ glance_email }}
         keystone user-role-add --user=glance --tenant=service --role=admin
         keystone service-create --name=glance --type=image --description="Glance Image Service"
         keystone endpoint-create --service=glance --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ public_url }}
