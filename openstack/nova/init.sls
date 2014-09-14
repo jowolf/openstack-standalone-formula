@@ -84,7 +84,7 @@ nova-services:
       - cmd: keystone-db-init
       - service: glance-services
 
-# JJW this is the wrong approach - to blast all the existing package-mnanager supplied files..
+# JJW this is the wrong approach, blasting all the existing package-manager supplied files..
 # need ini_manage - in the meantime, comment out
 #
 #/etc/nova:
