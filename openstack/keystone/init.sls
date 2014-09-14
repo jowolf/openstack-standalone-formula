@@ -4,6 +4,7 @@
 {% set admin_password = salt['pillar.get']('keystone:admin_password', 'keystone') %}
 {% set admin_url = 'http://' ~ bind_host ~ ':35357/v2.0' %}
 {% set public_url = 'http://' ~ bind_host ~ ':5000/v2.0' %}
+{% set admin_email = salt['pillar.get']('keystone:admin_email', 'joe@eracks.com') %}
 
 keystone-db-init:
   cmd:
@@ -31,7 +32,7 @@ keystone-admin-create:
         export OS_SERVICE_ENDPOINT={{ admin_url }}
         keystone tenant-create --name=admin --description="Admin Tenant"
         keystone tenant-create --name=service --description="Service Tenant"
-        keystone user-create --name=admin --pass={{ admin_password }} --email={{ salt['pillar.get']('keystone:admin_email', 'joe@eracks.com') }}
+        keystone user-create --name=admin --pass={{ admin_password }} --email={{ admin_email }}
         keystone role-create --name=admin
         keystone user-role-add --user=admin --tenant=admin --role=admin
     - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} user-list | grep admin
