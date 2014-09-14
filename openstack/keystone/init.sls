@@ -34,7 +34,9 @@ keystone-admin-create:
         keystone tenant-create --name=service --description="Service Tenant"
         keystone user-create --name=admin --pass={{ admin_password }} --email={{ admin_email }}
         keystone role-create --name=admin
+        keystone role-create --name=_member_
         keystone user-role-add --user=admin --tenant=admin --role=admin
+        keystone user-role-add --user=admin --tenant=admin --role=_member_
     - unless: keystone --os-token {{ admin_token }} --os-endpoint {{ admin_url }} user-list | grep admin
     - require:
       - pkg: openstack-keystone
