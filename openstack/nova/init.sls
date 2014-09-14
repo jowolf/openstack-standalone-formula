@@ -84,11 +84,49 @@ nova-services:
       - cmd: keystone-db-init
       - service: glance-services
 
-/etc/nova:
-  file:
-    - recurse
-    - source: salt://openstack/nova/files
+# JJW this is the wrong approach - to blast all the existing package-mnanager supplied files..
+# need ini_manage - in the meantime, comment out
+#
+#/etc/nova:
+#  file:
+#    - recurse
+#    - source: salt://openstack/nova/files
+#    - template: jinja
+#    - require:
+#      - pkg: openstack-nova
+#    - watch_in:
+#      - service: nova-services
+
+/etc/nova/nova.conf
+  file.append:
+    - text: |
+        rpc_backend = qpid
+        qpid_hostname = localhost
+        qpid_tcp_nodelay = True
+        auth_strategy = keystone
+        remove_unused_base_images = True
+
+        [keystone_authtoken]
+        #auth_uri = http://127.0.0.1:5000
+        #auth_host = 127.0.0.1
+        #auth_port = 35357
+        #auth_protocol = http
+        #admin_tenant_name = service
+        #admin_user = nova
+        #admin_password = nova
+        #service_protocol = {{ salt['pillar.get']('nova:filter_authtoken:service_protocol', 'http') }}
+        #service_host = {{ salt['pillar.get']('nova:filter_authtoken:service_host', '127.0.0.1') }}
+        #service_port = {{ salt['pillar.get']('nova:filter_authtoken:service_port', '5000') }}
+        auth_uri = {{ salt['pillar.get']('nova:filter_authtoken:auth_uri', 'http://127.0.0.1:5000/') }}
+        auth_host = {{ salt['pillar.get']('nova:filter_authtoken:auth_host', '127.0.0.1') }}
+        auth_port = {{ salt['pillar.get']('nova:filter_authtoken:auth_port', '35357') }}
+        auth_protocol = {{ salt['pillar.get']('nova:filter_authtoken:auth_protocol', 'http') }}
+        admin_tenant_name = {{ salt['pillar.get']('nova:filter_authtoken:admin_tenant_name', 'service') }}
+        admin_user = {{ salt['pillar.get']('nova:filter_authtoken:admin_user', 'nova') }}
+        admin_password = {{ salt['pillar.get']('nova:filter_authtoken:admin_password', 'nova') }}
+
     - template: jinja
+    - backups: minion
     - require:
       - pkg: openstack-nova
     - watch_in:
