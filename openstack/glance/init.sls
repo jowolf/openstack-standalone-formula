@@ -63,8 +63,7 @@ glance-services:
 #    - require:
 #      - pkg: openstack-glance
 
-glance image-create --name Cirros --is-public true --container-format bare --disk-format qcow2 --location https://launchpad.net/cirros/trunk/0.3.0/+download/cirros-0.3.0-x86_64-disk.img
-glance index
+/etc/glance/glance-api.conf:
   file:
     - replace: 
       - pattern: %SERVICE_TENANT%
@@ -76,7 +75,7 @@ glance index
       - pattern: %SERVICE_PASSWORD%
       - repl: {{ glance_password }}
 
-/etc/glance/glance-registry.conf
+/etc/glance/glance-registry.conf:
   file:
     - replace: 
       - pattern: %SERVICE_TENANT%
@@ -99,6 +98,3 @@ glance-img-create:
       - cmd: glance-db-init
       - service: glance-services
       - file: /etc/glance/glance-registry.conf
-
-        
-        
