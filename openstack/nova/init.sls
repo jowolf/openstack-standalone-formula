@@ -98,7 +98,7 @@ nova-services:
 #    - watch_in:
 #      - service: nova-services
 
-/etc/nova/nova.conf
+/etc/nova/nova.conf:
   file.append:
     - text: |
         rpc_backend = qpid
