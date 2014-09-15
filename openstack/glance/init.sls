@@ -66,25 +66,25 @@ glance-services:
 /etc/glance/glance-api.conf:
   file:
     - replace: 
-      - pattern: %SERVICE_TENANT%
+      - pattern: "%SERVICE_TENANT%"
       - repl: service
     - replace: 
-      - pattern: %SERVICE_USER%
+      - pattern: "%SERVICE_USER%"
       - repl: glance
     - replace: 
-      - pattern: %SERVICE_PASSWORD%
+      - pattern: "%SERVICE_PASSWORD%"
       - repl: {{ glance_password }}
 
 /etc/glance/glance-registry.conf:
   file:
     - replace: 
-      - pattern: %SERVICE_TENANT%
+      - pattern: "%SERVICE_TENANT%"
       - repl: service
     - replace: 
-      - pattern: %SERVICE_USER%
+      - pattern: "%SERVICE_USER%"
       - repl: glance
     - replace: 
-      - pattern: %SERVICE_PASSWORD%
+      - pattern: "%SERVICE_PASSWORD%"
       - repl: {{ glance_password }}
 
 glance-img-create:
