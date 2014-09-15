@@ -41,6 +41,7 @@ nova-keystone-creates:
         export OS_TENANT_NAME=admin
         keystone user-create --name=nova --pass={{ salt['pillar.get']('keystone:nova_password', 'nova') }} --email={{ salt['pillar.get']('keystone:nova_email', 'joe@eracks.com') }}
         keystone user-role-add --user=nova --tenant=service --role=admin
+        #keystone user-role-add --user=nova --tenant=service --role=admin
         keystone service-create --name=nova --type=compute --description="OpenStack Compute"
         keystone endpoint-create --service=nova --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ public_url }}
     - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin endpoint-get --service compute
