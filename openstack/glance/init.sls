@@ -54,10 +54,12 @@ glance-services:
     - watch:
       - file: /etc/glance
 
-/etc/glance:
-  file:
-    - recurse
-    - source: salt://openstack/glance/files
-    - template: jinja
-    - require:
-      - pkg: openstack-glance
+# JJW don't overwrite existing files - use ini_manage
+#/etc/glance:
+#  file:
+#    - recurse
+#    - source: salt://openstack/glance/files
+#    - template: jinja
+#    - require:
+#      - pkg: openstack-glance
+
