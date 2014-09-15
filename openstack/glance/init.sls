@@ -63,29 +63,26 @@ glance-services:
 #    - require:
 #      - pkg: openstack-glance
 
-glance-api:
-  file:
-    - name: /etc/glance/glance-api.conf
-    - replace: 
+/etc/glance/glance-api.conf:
+  file.replace: 
       - pattern: "%SERVICE_TENANT%"
       - repl: service
-    - replace: 
+    #- replace: 
       - pattern: "%SERVICE_USER%"
       - repl: glance
-    - replace: 
+    #- replace: 
       - pattern: "%SERVICE_PASSWORD%"
       - repl: {{ glance_password }}
 
-glance-registry:
-  file:
-    - name: /etc/glance/glance-registry.conf
-    - replace: 
+/etc/glance/glance-registry.conf:
+  file.replace:
+    #- replace: 
       - pattern: "%SERVICE_TENANT%"
       - repl: service
-    - replace: 
+    #- replace: 
       - pattern: "%SERVICE_USER%"
       - repl: glance
-    - replace: 
+    #- replace: 
       - pattern: "%SERVICE_PASSWORD%"
       - repl: {{ glance_password }}
 
