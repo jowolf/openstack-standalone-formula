@@ -44,7 +44,7 @@ nova-keystone-creates:
         keystone user-role-add --user=nova --tenant=service --role=admin
         #keystone user-role-add --user=nova --tenant=service --role=admin
         keystone service-create --name=nova --type=compute --description="OpenStack Compute"
-        keystone endpoint-create --service=nova --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ public_url }}
+        keystone endpoint-create --service=nova --publicurl='{{ public_url }}' --internalurl='{{ public_url }}' --adminurl='{{ public_url }}'
     - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin endpoint-get --service compute
     - require:
       - pkg: openstack-glance
