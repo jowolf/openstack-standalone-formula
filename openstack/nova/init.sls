@@ -8,6 +8,7 @@
 include:
   #- epel
   - mysql.server
+  - mysql.python
   - qpid.server
   - openstack.keystone
   - openstack.glance
@@ -22,7 +23,7 @@ openstack-nova:
       - nova-novncproxy 
       - nova-scheduler 
       - python-novaclient 
-      - python-mysqldb
+      #- python-mysqldb
       - python-qpid
       - nova-compute 
       - nova-console
