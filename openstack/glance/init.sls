@@ -95,7 +95,7 @@ glance-services:
 
 /etc/glance:
   file.directory:
-    - exists
+    - exists: True
   cmd.run:
     - cwd: /etc/glance
     - name: |
