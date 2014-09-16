@@ -94,8 +94,8 @@ glance-services:
 # sheesh.  so do it manually with shell:
 
 /etc/glance:
-  file.directory:
-    - exists: True
+  file:
+    - exists
   cmd.run:
     - cwd: /etc/glance
     - name: |
