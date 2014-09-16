@@ -101,8 +101,8 @@ glance-services:
     - name: |
         cp glance-api.conf glance-api.conf.bak
         cp glance-registry.conf glance-registry.conf.bak
-        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance -- glance-api.conf
-        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance -- glance-registry.conf
+        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance #flavor= 'flavor = keystone' -- glance-api.conf
+        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance #flavor= 'flavor = keystone' -- glance-registry.conf
     - onlyif: grep %SERVICE_TENANT_NAME%  glance-registry.conf
     - require:
       - pkg: openstack-glance
