@@ -63,28 +63,45 @@ glance-services:
 #    - require:
 #      - pkg: openstack-glance
 
-/etc/glance/glance-api.conf:
-  file.replace: 
-      - pattern: "%SERVICE_TENANT%"
-      - repl: service
-    #- replace: 
-      - pattern: "%SERVICE_USER%"
-      - repl: glance
-    #- replace: 
-      - pattern: "%SERVICE_PASSWORD%"
-      - repl: {{ glance_password }}
+
+# Give up on salt's file.replace - too limited, can only do one replace (!)
+#
+#/etc/glance/glance-api.conf:
+#  file:
+#    - replace: 
+#      - pattern: "%SERVICE_TENANT%"
+#      - repl: service
+#    - replace: 
+#      - pattern: "%SERVICE_USER%"
+#      - repl: glance
+#    - replace: 
+#      - pattern: "%SERVICE_PASSWORD%"
+#      - repl: {{ glance_password }}
+#
 
 /etc/glance/glance-registry.conf:
-  file.replace:
-    #- replace: 
-      - pattern: "%SERVICE_TENANT%"
-      - repl: service
-    #- replace: 
-      - pattern: "%SERVICE_USER%"
-      - repl: glance
-    #- replace: 
-      - pattern: "%SERVICE_PASSWORD%"
-      - repl: {{ glance_password }}
+#  file:
+#    - replace
+#      - pattern: "%SERVICE_TENANT%"
+#      - repl: service
+#    #- replace: 
+#      - pattern: "%SERVICE_USER%"
+#      - repl: glance
+#    #- replace: 
+#      - pattern: "%SERVICE_PASSWORD%"
+#      - repl: {{ glance_password }}
+#
+# sheesh.  so do it manually with shell:
+  cmd.run:
+    - cwd: /etc/glance
+    - name: |
+        cp glance-api.conf glance-api.conf.bak
+        cp glance-registry.conf glance-registry.conf.bak
+        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance glance-api.conf
+        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance glance-registry.conf
+    - onlyif: grep %SERVICE_TENANT_NAME%  glance-registry.conf
+    - require:
+      - pkg: openstack-glance
 
 glance-img-create:
   cmd:
