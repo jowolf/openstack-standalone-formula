@@ -78,8 +78,8 @@ glance-services:
 #      - pattern: "%SERVICE_PASSWORD%"
 #      - repl: {{ glance_password }}
 #
-
-/etc/glance/glance-registry.conf:
+#
+#/etc/glance/glance-registry.conf:
 #  file:
 #    - replace
 #      - pattern: "%SERVICE_TENANT%"
@@ -92,6 +92,8 @@ glance-services:
 #      - repl: {{ glance_password }}
 #
 # sheesh.  so do it manually with shell:
+
+/etc/glance:
   cmd.run:
     - cwd: /etc/glance
     - name: |
@@ -113,4 +115,4 @@ glance-img-create:
       - pkg: openstack-glance
       - cmd: glance-db-init
       - service: glance-services
-      - file: /etc/glance/glance-registry.conf
+      - file: /etc/glance
