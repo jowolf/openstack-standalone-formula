@@ -103,7 +103,7 @@ glance-services:
         cp glance-registry.conf glance-registry.conf.bak
         replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance #flavor= 'flavor = keystone' -- glance-api.conf
         replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance #flavor= 'flavor = keystone' -- glance-registry.conf
-        pass=glance  # {{ glance_dbpass }}
+        pass=glance  # { { glance_dbpass }}
         host={{ bind_host }}
         replace "sqlite_db = /var/lib/glance/glance.sqlite" "#sqlite_db = /var/lib/glance/glance.sqlite\nconnection = mysql://glance:$pass@$host/glance" -- glance-api.conf
         replace "sqlite_db = /var/lib/glance/glance.sqlite" "#sqlite_db = /var/lib/glance/glance.sqlite\nconnection = mysql://glance:$pass@$host/glance" -- glance-registry.conf
