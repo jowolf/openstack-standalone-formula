@@ -16,7 +16,7 @@ include:
 openstack-nova:
   pkg.installed:
     - names:
-      - nova-api 
+      # - nova-api # replaced by nova-api-metadata
       - nova-cert 
       - nova-conductor 
       - nova-consoleauth 
@@ -29,6 +29,7 @@ openstack-nova:
       - nova-console
       #- nova-volume
       - nova-network
+      - nova-api-metadata  # required for nova-network
       - nova-objectstore
 
 
