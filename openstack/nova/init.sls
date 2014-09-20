@@ -108,6 +108,9 @@ nova-services:
         qpid_tcp_nodelay = True
         auth_strategy = keystone
         remove_unused_base_images = True
+        #for nova-network:
+        network_api_class = nova.network.api.API
+        security_group_api = nova
 
         [keystone_authtoken]
         #auth_uri = http://127.0.0.1:5000
