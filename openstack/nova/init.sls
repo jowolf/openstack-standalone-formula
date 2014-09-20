@@ -29,7 +29,7 @@ openstack-nova:
       - nova-console
       #- nova-volume
       - nova-network
-      - nova-api-metadata  # required for nova-network
+      #- nova-api-metadata  # now included in nova-api
       - nova-objectstore
 
 
