@@ -16,7 +16,7 @@ include:
 openstack-nova:
   pkg.installed:
     - names:
-      - nova-api 
+      - nova-api
       - nova-cert 
       - nova-conductor 
       - nova-consoleauth 
@@ -29,6 +29,7 @@ openstack-nova:
       - nova-console
       #- nova-volume
       - nova-network
+      #- nova-api-metadata  # now included in nova-api
       - nova-objectstore
 
 
@@ -81,6 +82,7 @@ nova-services:
       #- nova-volume
       - nova-scheduler
       - nova-cert
+      - nova-api-metadata
     - watch:
       - cmd: nova-db-init
       - cmd: keystone-db-init
@@ -107,6 +109,21 @@ nova-services:
         qpid_tcp_nodelay = True
         auth_strategy = keystone
         remove_unused_base_images = True
+        # for controller node and compute node nova-network:
+        network_api_class = nova.network.api.API
+        security_group_api = nova
+        # for compute node nova-network:
+        firewall_driver = nova.virt.libvirt.firewall.IptablesFirewallDriver
+        network_manager = nova.network.manager.FlatDHCPManager
+        network_size = 254
+        allow_same_net_traffic = False
+        multi_host = False
+        send_arp_for_ha = True
+        share_dhcp_address = True
+        force_dhcp_release = True
+        flat_network_bridge = br100
+        flat_interface = {{ salt['pillar.get']('nova:network:interface_name', 'eth0') }}
+        public_interface = {{ salt['pillar.get']('nova:network:interface_name', 'eth0') }}
 
         [keystone_authtoken]
         #auth_uri = http://127.0.0.1:5000
