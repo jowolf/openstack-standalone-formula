@@ -122,7 +122,9 @@ glance-img-create:
         export OS_AUTH_URL={{ admin_url }}
         export OS_TENANT_NAME=admin
         glance image-create --name Cirros --is-public true --container-format bare --disk-format qcow2 --location https://launchpad.net/cirros/trunk/0.3.0/+download/cirros-0.3.0-x86_64-disk.img
+        glance image-create --name Trusty --is-public true --container-format bare --disk-format qcow2 --property hypervisor_type=kvm --property architecture=x86_64 --location https://cloud-images.ubuntu.com/releases/14.04.1/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img
         glance index
+    - unless: glance --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin index |grep Trusty
     - require:
       - pkg: openstack-glance
       - cmd: glance-db-init
