@@ -21,6 +21,7 @@ openstack-nova:
       - nova-conductor 
       - nova-consoleauth 
       - nova-novncproxy 
+      - nova-spiceproxy 
       - nova-scheduler 
       - python-novaclient 
       #- python-mysqldb
@@ -83,6 +84,8 @@ nova-services:
       - nova-scheduler
       - nova-cert
       - nova-api-metadata
+      - nova-novncproxy
+      - nova-spiceproxy
     - watch:
       - cmd: nova-db-init
       - cmd: keystone-db-init
