@@ -15,6 +15,68 @@ openstack-glance:
     - name: glance
     - installed
 
+{% for theid in 'glance-api.conf', 'glance-registry.conf' %}
+
+etc-{{ theid }}-conf-absent:
+  ini.options_absent:
+    - name: /etc/glance/{{ theid }}
+    - sections:
+        database:
+          - sqlite_db
+    - require:
+      - pkg: openstack-glance
+
+etc-{{ theid }}-conf-present:
+  ini.options_present:
+    - name: /etc/glance/{{ theid }}
+    #- names:
+    #  - /etc/glance/glance-api.conf
+    #  - /etc/glance/glance-registry.conf
+    - sections:
+        database:
+          #connection:   {{ salt['pillar.get']('keystone:sql:connection', 'mysql://keystone:keystone@localhost/keystone') }}
+          connection: mysql://glance:{{ glance_password }}@{{ bind_host }}/glance
+        keystone_authtoken:
+          auth_uri: http://{{ bind_host }}:5000/v2.0
+          identity_uri: http://{{ bind_host}}:35357
+          admin_tenant_name: service
+          admin_user: glance
+          admin_password: {{ glance_password }}
+        paste_deploy:
+          flavor: keystone
+    - require:
+      - pkg: openstack-glance
+    - backupname: .bak
+{% endfor %}
+
+glance-services:
+  service:
+    - running
+    - enable: True
+    - names:
+      - glance-api
+      - glance-registry
+    - require:
+      - pkg: openstack-glance
+      #- cmd: /etc-glance-db-init
+    - watch:
+      #- file: /etc/glance
+      - ini: /etc/glance/glance-api.conf
+      - ini: /etc/glance/glance-registry.conf
+    #- require:
+    #  - ini: 
+
+glance-db-init:
+  cmd:
+    - run
+    # if it fails, run it again; that's what the or (||) is for:
+    - name: openstack-db --init --service glance --rootpw '{{ mysql_root_password }}' || openstack-db --init --service glance --rootpw '{{ mysql_root_password }}'
+    - unless: echo '' | mysql glance --password='{{ mysql_root_password }}'
+    - require:
+      #- pkg: openstack-glance
+      - service: mysqld
+      - service: glance-services
+
 glance-keystone-creates:
   cmd:
     - run
@@ -28,31 +90,16 @@ glance-keystone-creates:
         keystone service-create --name=glance --type=image --description="Glance Image Service"
         keystone endpoint-create --service=glance --publicurl={{ public_url }} --internalurl={{ public_url }} --adminurl={{ public_url }}
     - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin endpoint-get --service image
+    #- unless: unset OS_SERVICE_TOKEN; unset OS_SERVICE_ENDPOINT; unset OS_ENDPOINT; unset SERVICE_TOKEN; env; keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin endpoint-get --service image
+    #- unless: env -i - keystone --debug --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin endpoint-get --service image
+    #- unless: env -i - keystone --debug --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin user-list |grep glance
+    #- unless: echo Bypassing!
     - require:
-      - pkg: openstack-glance
-      - service: mysqld
-
-glance-db-init:
-  cmd:
-    - run
-    - name: openstack-db --init --service glance --rootpw '{{ mysql_root_password }}'
-    - unless: echo '' | mysql glance --password='{{ mysql_root_password }}'
-    - require:
-      - pkg: openstack-glance
-      - service: mysqld
-
-glance-services:
-  service:
-    - running
-    - enable: True
-    - names:
-      - glance-api
-      - glance-registry
-    - require:
-      - pkg: openstack-glance
+      #- pkg: openstack-glance
+      #- service: mysqld
       - cmd: glance-db-init
-    - watch:
-      - file: /etc/glance
+      - service: keystone
+      - service: glance-services
 
 # JJW don't overwrite existing files - use ini_manage
 #/etc/glance:
@@ -93,25 +140,35 @@ glance-services:
 #
 # sheesh.  so do it manually with shell:
 
-/etc/glance:
-  file:
-    - exists
-  cmd.run:
-    - cwd: /etc/glance
+# JJW use ini-manage for Juno, salt Helium
+#/etc/glance:
+#  file:
+#    - exists
+#  cmd.run:
+#    - cwd: /etc/glance
+#    - name: |
+#        cp glance-api.conf glance-api.conf.bak
+#        cp glance-registry.conf glance-registry.conf.bak
+#        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance '#flavor=' 'flavor = keystone' -- glance-api.conf
+#        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance '#flavor=' 'flavor = keystone' -- glance-registry.conf
+#        pass=glance  # { { glance_dbpass }}
+#        host={{ bind_host }}
+#        replace "sqlite_db = /var/lib/glance/glance.sqlite" "#sqlite_db = /var/lib/glance/glance.sqlite
+#        connection = mysql://glance:$pass@$host/glance" -- glance-api.conf
+#        replace "sqlite_db = /var/lib/glance/glance.sqlite" "#sqlite_db = /var/lib/glance/glance.sqlite
+#        connection = mysql://glance:$pass@$host/glance" -- glance-registry.conf
+#    - onlyif: grep %SERVICE_TENANT_NAME%  glance-registry.conf
+#    - require:
+#      - pkg: openstack-glance
+
+glance-coreos-get:
+  cmd:
+    - run
+    - cwd: /home/joe
     - name: |
-        cp glance-api.conf glance-api.conf.bak
-        cp glance-registry.conf glance-registry.conf.bak
-        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance '#flavor=' 'flavor = keystone' -- glance-api.conf
-        replace %SERVICE_TENANT_NAME% service %SERVICE_USER% glance %SERVICE_PASSWORD% glance '#flavor=' 'flavor = keystone' -- glance-registry.conf
-        pass=glance  # { { glance_dbpass }}
-        host={{ bind_host }}
-        replace "sqlite_db = /var/lib/glance/glance.sqlite" "#sqlite_db = /var/lib/glance/glance.sqlite
-        connection = mysql://glance:$pass@$host/glance" -- glance-api.conf
-        replace "sqlite_db = /var/lib/glance/glance.sqlite" "#sqlite_db = /var/lib/glance/glance.sqlite
-        connection = mysql://glance:$pass@$host/glance" -- glance-registry.conf
-    - onlyif: grep %SERVICE_TENANT_NAME%  glance-registry.conf
-    - require:
-      - pkg: openstack-glance
+        wget http://alpha.release.core-os.net/amd64-usr/current/coreos_production_openstack_image.img.bz2
+        bunzip2 coreos_production_openstack_image.img.bz2
+    - creates: /home/joe/coreos_production_openstack_image.img
 
 glance-img-create:
   cmd:
@@ -123,13 +180,15 @@ glance-img-create:
         export OS_TENANT_NAME=admin
         glance image-create --name Cirros --is-public true --container-format bare --disk-format qcow2 --location https://launchpad.net/cirros/trunk/0.3.0/+download/cirros-0.3.0-x86_64-disk.img
         glance image-create --name Trusty --is-public true --container-format bare --disk-format qcow2 --property hypervisor_type=kvm --property architecture=x86_64 --location https://cloud-images.ubuntu.com/releases/14.04.1/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img
-        wget http://alpha.release.core-os.net/amd64-usr/current/coreos_production_openstack_image.img.bz2
-        bunzip2 coreos_production_openstack_image.img.bz2 
         glance image-create --name CoreOS   --container-format bare   --disk-format qcow2  --is-public True --property hypervisor_type=kvm --property architecture=x86_64 --file /home/joe/coreos_production_openstack_image.img
-        glance index
-    - unless: glance --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin index |grep Trusty
+        glance image-list
+    - unless: glance --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin image-list |grep Trusty
     - require:
-      - pkg: openstack-glance
+      #- pkg: openstack-glance
       - cmd: glance-db-init
+      - cmd: glance-coreos-get
       - service: glance-services
-      - file: /etc/glance
+      - cmd: glance-keystone-creates
+      #- file: /etc/glance
+      #- ini: /etc/glance/glance-api.conf
+      #- ini: /etc/glance/glance-registry.conf

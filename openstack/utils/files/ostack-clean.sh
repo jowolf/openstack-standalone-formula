@@ -1,4 +1,9 @@
-sudo apt-get purge mysql-server mysql-client mysql-common nova-common keystone glance dnsmasq dnsmasq-base dnsmasq-utils
+sudo apt-get purge mysql-server mysql-client mysql-common python-mysqldb nova-common nova-volume \
+    keystone glance dnsmasq dnsmasq-base dnsmasq-utils openstack-dashboard python-django-horizon \
+    python-ceilometerclient python-troveclient python-openstack-auth python-heatclient \
+    cinder-common glance-common 
+
+# rabbitmq-server qpid
 sudo apt-get --purge autoremove
 sudo ls -l /var/lib/mysql/
 sudo ls -l /etc/mysql
