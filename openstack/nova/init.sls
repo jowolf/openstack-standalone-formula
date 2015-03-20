@@ -228,6 +228,14 @@ nova-keystone-creates:
       - service: keystone-service
 
 
+nova-network-setup:
+  cmd:
+    - run
+    - name: |
+        nova-manage network create --fixed_range_v4 10.1.4.0/24 --bridge br100 net1
+        for i in {129..136}; do nova-manage floating create --ip_range 216.172.133.$i --pool=nova; done
+    - require:
+      - cmd: nova_keystone_creates
 
 # JJW this is the wrong approach, blasting all the existing package-manager supplied files..
 # need ini_manage - in the meantime, comment out

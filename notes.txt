@@ -1,0 +1,93 @@
+3/19/15
+Cinder now working useing all new-style salt states - 
+
+- no more create-db script
+- proper sync db, with unless
+- ini-manage to create conf
+- conf.d, does NOT modify original pkg's conf files
+- creates proper symlink & dir
+- proper dependencies set up for create order
+- modifies /etc/init/cinder-*.conf for config dir
+- proper inculdes added to make these sls modules more independent and runnable on their own (see below)
+- pillar updated for proper keystone auths
+- uses salt keystone.xxx mechanisms
+
+Works with:
+
+salt-call -l debug --local --file-root=/home/joe/openstack-standalone-formula state.sls openstack.cinder
+
+pillar.data and pillar.item keystone also insightful.
+
+Still need to do whole test when all modules ported.
+
+
+JJW 3/7/15
+
+Todo:  retrive soliloquy from issues and update Readme.rst
+
+In addition:
+
+- late Nov 2014: played with docker deployment of OpenStack, with more minimal 
+Salt postprocessing, including conf dirs
+
+- Feb 2015: Experimenting with adopting modular Docker approach with fig (now 
+docker-compose) - also converting original saltstack-installed OS14 dir 
+structure to conf dirs
+
+- Mar 2015: found original conf file mods by saltstack left sqlite db for 
+keystone (!) - after extensive debugging and testing of new conf dir strategy, 
+which leaves the orig conf file untouched (and therefore easily upgradeable), 
+finally found:
+
+   sudo keystone-manage --config-dir /etc/keystone/keystone.conf.d db_sync
+
+Needed to pass the conf-dir to dbsync. Sigh.
+
+
+I found this, first, by inserting the following into keystone.cli:
+
+- - -
+
+class DbSync(BaseApp):
+    """Sync the database."""
+
+    name = 'db_sync'
+
+    @classmethod
+    def add_argument_parser(cls, subparsers):
+        parser = super(DbSync, cls).add_argument_parser(subparsers)
+        parser.add_argument('version', default=None, nargs='?',
+                            help=('Migrate the database up to a specified '
+                                  'version. If not provided, db_sync will '
+                                  'migrate the database to the latest known '
+                                  'version.'))
+        parser.add_argument('--extension', default=None,
+                            help=('Migrate the database for the specified '
+                                  'extension. If not provided, db_sync will '
+                                  'migrate the common repository.'))
+
+        return parser
+
+    @staticmethod
+    def main():
+        # JJW
+        from pprint import pprint
+        pprint (CONF.__dict__)
+        pprint (CONF._groups)
+        pprint (CONF.command.__dict__)
+
+        version = CONF.command.version
+        extension = CONF.command.extension
+        migration_helpers.sync_database_to_version(extension, version)
+
+- - -
+
+Then, by firing up ipython in interactive mode, in looking at cli.CONF:
+
+ipython -i /usr/bin/keystone-manage db_sync
+
+A couple of useful ones:
+
+In [7]: cli.CONF._groups['database'].__dict__
+
+In [15]: cli.CONF._opts['config_dir']['opt'].__dict__

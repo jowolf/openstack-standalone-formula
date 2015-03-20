@@ -166,9 +166,20 @@ glance-coreos-get:
     - run
     - cwd: /home/joe
     - name: |
-        wget http://alpha.release.core-os.net/amd64-usr/current/coreos_production_openstack_image.img.bz2
+        wget http://stable.release.core-os.net/amd64-usr/current/coreos_production_openstack_image.img.bz2
         bunzip2 coreos_production_openstack_image.img.bz2
     - creates: /home/joe/coreos_production_openstack_image.img
+
+glance-ubuntu-core-get:
+  cmd:
+    - run
+    - cwd: /home/joe
+    - name: |
+        wget http://cloud-images.ubuntu.com/ubuntu-core/devel/core/current/devel-core-amd64-disk1.img
+        #wget http://cdimage.ubuntu.com/ubuntu-core/releases/14.04/release/ubuntu-core-14.04.2-core-amd64.tar.gz
+        #tar zxvf ubuntu-core-14.04.2-core-amd64.tar.gz
+    - creates: devel-core-amd64-disk1.img
+    #/home/joe/ubuntu-core-14.04.2-core-amd64
 
 glance-img-create:
   cmd:
@@ -178,9 +189,10 @@ glance-img-create:
         export OS_PASSWORD={{ admin_password }}
         export OS_AUTH_URL={{ admin_url }}
         export OS_TENANT_NAME=admin
-        glance image-create --name Cirros --is-public true --container-format bare --disk-format qcow2 --location https://launchpad.net/cirros/trunk/0.3.0/+download/cirros-0.3.0-x86_64-disk.img
+        glance image-create --name Cirros --is-public true --container-format bare --disk-format qcow2 --location https://download.cirros-cloud.net/0.3.3/cirros-0.3.3-x86_64-disk.img
         glance image-create --name Trusty --is-public true --container-format bare --disk-format qcow2 --property hypervisor_type=kvm --property architecture=x86_64 --location https://cloud-images.ubuntu.com/releases/14.04.1/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img
         glance image-create --name CoreOS   --container-format bare   --disk-format qcow2  --is-public True --property hypervisor_type=kvm --property architecture=x86_64 --file /home/joe/coreos_production_openstack_image.img
+        glance image-create --name Snappy   --container-format bare   --disk-format qcow2  --is-public True --property hypervisor_type=kvm --property architecture=x86_64 --file /home/joe/devel-core-amd64-disk1.img
         glance image-list
     - unless: glance --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin image-list |grep Trusty
     - require:

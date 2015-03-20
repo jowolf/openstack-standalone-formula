@@ -1,10 +1,3 @@
-#{% if grains['os_family'] == 'RedHat' %}
-#  {% set cinder_pkgs = ['openstack-cinder', 'openstack-cinder-doc'] %}
-#{% elif grains['os_family'] == 'Debian' %}
-#  {% set cinder_pkgs = ['openstack-cinder', 'openstack-cinder-doc'] %}
-#{% endif %}
-
-
 {% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
 {% set bind_host = salt['pillar.get']('keystone:bind_host', '0.0.0.0') %}
 {% set admin_token = salt['pillar.get']('keystone:admin_token', 'c195b883042b11f25916') %}
@@ -14,6 +7,10 @@
 {% set cinder_email = salt['pillar.get']('keystone:cinder_email', 'joe@eracks.com') %}
 {% set cinder_password = salt['pillar.get']('keystone:cinder_password', 'cinder') %}
 {% set qpid_host =  salt['pillar.get']('cinder:qpid_hostname', 'localhost') %}
+
+include:
+  - mysql.server
+  - qpid.server
 
 
 # do we need this, if we're using ceph? JJW
@@ -27,29 +24,29 @@ cinder-pkgs:
         - cinder-scheduler
         - cinder-volume
         - lvm2
+        - open-iscsi-utils
+        - open-iscsi
+        - iscsitarget
         - sysfsutils
 
-        #open-iscsi-utils open-iscsi iscsitarget 
 
-    #{% for pkg in cinder_pkgs %}
-    #  - {{ pkg }}
-    #{% endfor %}
+# Put the dir there, and example fosskb files:
+/etc/cinder/conf.d:
+  file.recurse:
+    - source: salt://openstack/cinder/conf.d
+    - template: jinja
     #- watch_in:
     #  - service: tgt
 
-# let's edit the individual parms, not this:
-#/etc/cinder:
-#  file.recurse:
-#    - source: salt://openstack/cinder/files
-#    - template: jinja
-#    - watch_in:
-#      - service: tgt
+/etc/cinder/conf.d/00-base.conf:
+  file.symlink:
+    - target: /etc/cinder/cinder.conf
 
+/etc/cinder/conf.d/01-fromsalt.conf-present:
+  file.touch:
+    - name: /etc/cinder/conf.d/01-fromsalt.conf
 
-#HERE: create db first, & manage-db, then keystone, then conf - 
-# then manage db sync, pvcreate, vgcreate, services restart
-
-/etc/cinder/cinder.conf:
+/etc/cinder/conf.d/01-fromsalt.conf:
   ini.options_present:
     - sections:
         DEFAULT:
@@ -69,10 +66,16 @@ cinder-pkgs:
           auth_host: {{ bind_host }}
           auth_port: {{ salt['pillar.get']('cinder:auth_port', '35357') }}
           auth_protocol: {{ salt['pillar.get']('cinder:auth_protocol', 'http') }}
-          auth_uri: http://{{ bind_host }}:5000/v2.0
+          auth_uri: http://{{ bind_host }}:5000
+          #/v2.0
           #signing_dirname: {{ salt['pillar.get']('cinder:signing_dirname', '/tmp/keystone-signing-cinder') }}
     - require:
-      - pkg: cinder-pkgs
+      #- pkg: cinder-pkgs
+      - file: /etc/cinder/conf.d
+
+
+# create db first, & manage-db, then keystone, then conf - 
+# then manage db sync, pvcreate, vgcreate, services restart
 
 cinder-db:
   mysql_database.present:
@@ -99,14 +102,19 @@ cinder-db:
       #mysql> GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'%' IDENTIFIED BY 'cinder_dbpass';
       #quit;
     - require:
-      - ini: /etc/cinder/cinder.conf
+      - pkg: cinder-pkgs
+      #- ini: /etc/cinder/cinder.conf.d/
 
 cinder-manage:
-  cmd.wait:
+  cmd.run:
     - name: cinder-manage db sync
-    - watch:
+    - unless: mysql --password={{ mysql_root_password }} cinder -e 'show tables;' |grep volumes
+    - require:
+      - mysql_database: cinder-db
+
+    #- watch:
       #- pkg: cinder-pkgs
-      - mysql_grants: cinder-db
+    # - mysql_grants: cinder-db
       #- file: /etc/cinder/cinder.conf
 
 cinder-keystone-user:
@@ -134,9 +142,9 @@ cinder-keystone-service:
 cinder-keystone-endpoint:
   keystone.endpoint_present:
     - name: cinder
-    - publicurl: http://{{ bind_host }}:8776/v1/%\(tenant_id\)s
-    - internalurl: http://{{ bind_host }}:8776/v1/%\(tenant_id\)s
-    - adminurl: http://{{ bind_host }}:8776/v1/%\(tenant_id\)s
+    - publicurl: http://{{ bind_host }}:8776/v1/%(tenant_id)s
+    - internalurl: http://{{ bind_host }}:8776/v1/%(tenant_id)s
+    - adminurl: http://{{ bind_host }}:8776/v1/%(tenant_id)s
     #...
     #keystone user-create --name=cinder --pass=cinder_pass --email=cinder@example.com
     #keystone user-role-add --user=cinder --tenant=service --role=admin
@@ -164,6 +172,21 @@ cinder2-keystone-endpoint:
     - require:
       - keystone: cinder2-keystone-service
 
+/etc/init/cinder-api.conf:
+  file.replace:
+    - pattern: '--config-file=/etc/cinder/cinder.conf'
+    - repl: '--config-dir=/etc/cinder/conf.d'
+
+/etc/init/cinder-scheduler.conf:
+  file.replace:
+    - pattern: '--config-file=/etc/cinder/cinder.conf'
+    - repl: '--config-dir=/etc/cinder/conf.d'
+
+/etc/init/cinder-volume.conf:
+  file.replace:
+    - pattern: '--config-file=/etc/cinder/cinder.conf'
+    - repl: '--config-dir=/etc/cinder/conf.d'
+
 cinder-services:
   service.running:
     - names:
@@ -172,5 +195,7 @@ cinder-services:
       - cinder-scheduler
       - tgt
     - require:
+      - file: /etc/init/cinder-api.conf
+      - file: /etc/init/cinder-scheduler.conf
+      - file: /etc/init/cinder-volume.conf
       - keystone: cinder2-keystone-endpoint
-

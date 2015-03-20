@@ -1,0 +1,2 @@
+uvtool:
+  pkg.installed
