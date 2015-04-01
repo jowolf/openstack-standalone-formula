@@ -1,5 +1,36 @@
+3/31/15
+OK eveything's converted to salt and working, but nova won't work with conf.d approach,
+due to dhcpbridge, fired off by dnsmasq.
+
+Grr.
+
+
+3/30
+Cinder: Configuring admin URI using auth fragments. This is deprecated, use 'identity_uri' instead.
+
+d (related to incomplete nova service list) "No availability zones found"
+
+
+3/29
+d update/saltify keystone, nova like cinder fm 3/19
+
+3/21
+
+tweaks to cinder, delete lvol1 to make room in pv for cinder to create vols
+
+TODO: deal with lvm.conf filter - no augeas lens, arcane .conf format -
+
+see point 8:
+
+http://docs.openstack.org/juno/install-guide/install/apt/content/cinder-install-storage-node.html
+
+filter = [ "a/sda/", "a/sdb/", "r/.*/"]
+
+TODO: add pillar for vg
+
+
 3/19/15
-Cinder now working useing all new-style salt states - 
+Cinder now working using all new-style salt states -
 
 - no more create-db script
 - proper sync db, with unless
@@ -27,16 +58,16 @@ Todo:  retrive soliloquy from issues and update Readme.rst
 
 In addition:
 
-- late Nov 2014: played with docker deployment of OpenStack, with more minimal 
+- late Nov 2014: played with docker deployment of OpenStack, with more minimal
 Salt postprocessing, including conf dirs
 
-- Feb 2015: Experimenting with adopting modular Docker approach with fig (now 
-docker-compose) - also converting original saltstack-installed OS14 dir 
+- Feb 2015: Experimenting with adopting modular Docker approach with fig (now
+docker-compose) - also converting original saltstack-installed OS14 dir
 structure to conf dirs
 
-- Mar 2015: found original conf file mods by saltstack left sqlite db for 
-keystone (!) - after extensive debugging and testing of new conf dir strategy, 
-which leaves the orig conf file untouched (and therefore easily upgradeable), 
+- Mar 2015: found original conf file mods by saltstack left sqlite db for
+keystone (!) - after extensive debugging and testing of new conf dir strategy,
+which leaves the orig conf file untouched (and therefore easily upgradeable),
 finally found:
 
    sudo keystone-manage --config-dir /etc/keystone/keystone.conf.d db_sync

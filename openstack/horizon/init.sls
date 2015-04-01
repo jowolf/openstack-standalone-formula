@@ -19,6 +19,8 @@ horizon:
     - watch_in:
       - service: apache
 
+# TODO: make backup '.org' copy
+
 /etc/openstack-dashboard/local_settings.py:
   cmd.run:
     - cwd: /etc/openstack-dashboard/
@@ -53,7 +55,7 @@ horizon-config:
 
 
 
-# Nope, ini-manage doesn't work, as it munges other portions of the file, 
+# Nope, ini-manage doesn't work, as it munges other portions of the file,
 # rather than taking a minimalistic approach:
 #
 #/etc/openstack-dashboard/local_settings.py:

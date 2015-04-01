@@ -1,16 +1,19 @@
 {% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
+{% set qpid_host =  salt['pillar.get']('openstack:qpid_host', '127.0.0.1') %}
+{% set qpid_port =  salt['pillar.get']('openstack:qpid_port', '5672') %}
 {% set bind_host = salt['pillar.get']('keystone:bind_host', '0.0.0.0') %}
 {% set admin_token = salt['pillar.get']('keystone:admin_token', 'c195b883042b11f25916') %}
-{% set admin_password = salt['pillar.get']('keystone:admin_password', 'keystone') %}
+{% set admin_password = salt['pillar.get']('keystone.password', 'keystone') %}
 {% set admin_url = 'http://' ~ bind_host ~ ':35357/v2.0' %}
 {% set public_url = 'http://' ~ bind_host ~ ':9292' %}
 {% set cinder_email = salt['pillar.get']('keystone:cinder_email', 'joe@eracks.com') %}
 {% set cinder_password = salt['pillar.get']('keystone:cinder_password', 'cinder') %}
-{% set qpid_host =  salt['pillar.get']('cinder:qpid_hostname', 'localhost') %}
+{% set cinder_vg = salt['pillar.get']('cinder:volume_group', 'cinder_volumes') %}
 
 include:
   - mysql.server
   - qpid.server
+  #- openstack.keystone
 
 
 # do we need this, if we're using ceph? JJW
@@ -29,22 +32,43 @@ cinder-pkgs:
         - iscsitarget
         - sysfsutils
 
+cinder-services-down:
+  service.dead:
+    - init-delay: 2
+    - names:
+      - cinder-volume
+      - cinder-api
+      - cinder-scheduler
+      - tgt
+    - require:
+      - pkg: cinder-pkgs
 
-# Put the dir there, and example fosskb files:
+/var/lib/cinder/cinder.sqlite:
+  file.absent:
+    - require:
+      - service: cinder-services-down
+
+
+## Now put the dir there, and example fosskb files:
+
 /etc/cinder/conf.d:
   file.recurse:
     - source: salt://openstack/cinder/conf.d
     - template: jinja
-    #- watch_in:
-    #  - service: tgt
+    - require:
+      - service: cinder-services-down
 
 /etc/cinder/conf.d/00-base.conf:
   file.symlink:
     - target: /etc/cinder/cinder.conf
+    - require:
+      - file: /etc/cinder/conf.d
 
 /etc/cinder/conf.d/01-fromsalt.conf-present:
   file.touch:
     - name: /etc/cinder/conf.d/01-fromsalt.conf
+    - require:
+      - file: /etc/cinder/conf.d
 
 /etc/cinder/conf.d/01-fromsalt.conf:
   ini.options_present:
@@ -56,7 +80,12 @@ cinder-pkgs:
           #rabbit_userid = guest
           #rabbit_password = rabbit
           glance_host: {{ bind_host }}
-          qpid_hostname: {{ qpid_host }}
+          rpc_backend: qpid
+          qpid_hostname: " {{ qpid_host }}"
+          qpid_port: " {{ qpid_port }}"
+          volume_group: {{ cinder_vg }}
+          verbose: True
+          my_ip: 127.0.0.1
         database:
           connection: mysql://cinder:{{ cinder_password }}@{{ bind_host }}/cinder
         keystone_authtoken:
@@ -70,12 +99,10 @@ cinder-pkgs:
           #/v2.0
           #signing_dirname: {{ salt['pillar.get']('cinder:signing_dirname', '/tmp/keystone-signing-cinder') }}
     - require:
-      #- pkg: cinder-pkgs
       - file: /etc/cinder/conf.d
 
 
-# create db first, & manage-db, then keystone, then conf - 
-# then manage db sync, pvcreate, vgcreate, services restart
+## Create db first, & manage db dync, then keystone, then pvcreate, vgcreate, services start
 
 cinder-db:
   mysql_database.present:
@@ -97,25 +124,15 @@ cinder-db:
     - user: cinder
     - connection_user: root
     - connection_pass: {{ mysql_root_password }}
-      #mysql -u root -p
-      #mysql> CREATE DATABASE cinder;
-      #mysql> GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'%' IDENTIFIED BY 'cinder_dbpass';
-      #quit;
     - require:
-      - pkg: cinder-pkgs
-      #- ini: /etc/cinder/cinder.conf.d/
+      - ini: /etc/cinder/conf.d/01-fromsalt.conf
 
 cinder-manage:
   cmd.run:
-    - name: cinder-manage db sync
+    - name: cinder-manage --config-dir /etc/cinder/conf.d db sync
     - unless: mysql --password={{ mysql_root_password }} cinder -e 'show tables;' |grep volumes
     - require:
-      - mysql_database: cinder-db
-
-    #- watch:
-      #- pkg: cinder-pkgs
-    # - mysql_grants: cinder-db
-      #- file: /etc/cinder/cinder.conf
+      - mysql_grants: cinder-db
 
 cinder-keystone-user:
   keystone.user_present:
@@ -142,6 +159,7 @@ cinder-keystone-service:
 cinder-keystone-endpoint:
   keystone.endpoint_present:
     - name: cinder
+    - region: regionOne
     - publicurl: http://{{ bind_host }}:8776/v1/%(tenant_id)s
     - internalurl: http://{{ bind_host }}:8776/v1/%(tenant_id)s
     - adminurl: http://{{ bind_host }}:8776/v1/%(tenant_id)s
@@ -166,9 +184,10 @@ cinder2-keystone-service:
 cinder2-keystone-endpoint:
   keystone.endpoint_present:
     - name: cinderv2
-    - publicurl: http://{{ bind_host }}:8776/v2/%\(tenant_id\)s
-    - internalurl: http://{{ bind_host }}:8776/v2/%\(tenant_id\)s
-    - adminurl: http://{{ bind_host }}:8776/v2/%\(tenant_id\)s
+    - region: regionOne
+    - publicurl: http://{{ bind_host }}:8776/v2/%(tenant_id)s
+    - internalurl: http://{{ bind_host }}:8776/v2/%(tenant_id)s
+    - adminurl: http://{{ bind_host }}:8776/v2/%(tenant_id)s
     - require:
       - keystone: cinder2-keystone-service
 
@@ -176,6 +195,8 @@ cinder2-keystone-endpoint:
   file.replace:
     - pattern: '--config-file=/etc/cinder/cinder.conf'
     - repl: '--config-dir=/etc/cinder/conf.d'
+    - require:
+      - keystone: cinder2-keystone-endpoint
 
 /etc/init/cinder-scheduler.conf:
   file.replace:
@@ -187,8 +208,15 @@ cinder2-keystone-endpoint:
     - pattern: '--config-file=/etc/cinder/cinder.conf'
     - repl: '--config-dir=/etc/cinder/conf.d'
 
-cinder-services:
+/etc/lvm/lvm.conf:
+  file.replace:
+    - pattern: 'filter = [ "a/.*/" ]'
+    - repl: 'filter = [ "a/sda/", "a/sdb/", "r/.*/"]'
+
+cinder-services-up:
   service.running:
+    - enable: True
+    - init-delay: 3
     - names:
       - cinder-volume
       - cinder-api
@@ -198,4 +226,5 @@ cinder-services:
       - file: /etc/init/cinder-api.conf
       - file: /etc/init/cinder-scheduler.conf
       - file: /etc/init/cinder-volume.conf
+      - file: /etc/lvm/lvm.conf
       - keystone: cinder2-keystone-endpoint

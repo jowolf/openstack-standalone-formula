@@ -1,4 +1,6 @@
 {% set mysql_root_password = salt['pillar.get']('mysql:server:root_password', salt['grains.get']('server_id')) %}
+{% set qpid_host =  salt['pillar.get']('openstack:qpid_host', '127.0.0.1') %}
+{% set qpid_port =  salt['pillar.get']('openstack:qpid_port', '5672') %}
 {% set bind_host = salt['pillar.get']('keystone:bind_host', '0.0.0.0') %}
 {% set admin_token = salt['pillar.get']('keystone:admin_token', 'c195b883042b11f25916') %}
 {% set admin_password = salt['pillar.get']('keystone:admin_password', 'keystone') %}
@@ -6,99 +8,204 @@
 {% set public_url = 'http://' ~ bind_host ~ ':8774/v2/%(tenant_id)s' %}
 {% set vnc_host = salt['pillar.get']('nova:vnc_host', '0.0.0.0') %}
 {% set nova_password = salt['pillar.get']('nova:password', 'nova') %}
-
+{% set netname = salt['pillar.get']('nova:netname', 'net10') %}
+{% set home_dir = salt['pillar.get']('nova:home_dir', '/home/joe') %}
+{% set key1 = salt['pillar.get']('nova:key1', '.ssh/id_rsa.pub') %}
+{% set key1_name = salt['pillar.get']('nova:key1_name', 'MyKey') %}
+{% set key2 = salt['pillar.get']('nova:key1', '.ssh/id_rsa2.pub') %}
+{% set key2_name = salt['pillar.get']('nova:key2_name', 'MyKey2') %}
+{% set use_confdir = salt['pillar.get']('nova:use_confdir', False) %}
 
 include:
-  #- epel
   - mysql.server
   - mysql.python
   - qpid.server
-  - openstack.keystone
-  - openstack.glance
+  #- openstack.keystone
+  #- openstack.glance
+  #- epel
+  #- mysql.python
 
-openstack-nova:
+nova-pkgs:
   pkg.installed:
     - names:
       - nova-api
-      - nova-cert 
-      - nova-conductor 
-      - nova-consoleauth 
-      - nova-novncproxy 
-      - nova-spiceproxy 
-      - nova-scheduler 
-      - python-novaclient 
-      #- python-mysqldb
+      - nova-cert
+      - nova-conductor
+      - nova-consoleauth
+      - nova-novncproxy
+      - nova-spiceproxy
+      - nova-scheduler
+      - python-novaclient
       - python-qpid
-      - nova-compute 
+      - nova-compute
       - nova-console
-      #- nova-volume
       - nova-network
+      #- nova-objectstore
+      #- nova-volume
       #- nova-api-metadata  # now included in nova-api
-      - nova-objectstore
+
+## stop & remove the sqlite db
+
+nova-services-down:
+  service.dead:
+    - init-delay: 3
+    - names:
+      - nova-api
+      - nova-cert
+      - nova-compute
+      - nova-conductor
+      - nova-consoleauth
+      - nova-console
+      - nova-network
+      - nova-novncproxy
+      - nova-scheduler
+      - nova-spiceproxy
+    - require:
+      - pkg: nova-pkgs
+
+/var/lib/nova/nova.sqlite:
+  file.absent:
+    - require:
+      - service: nova-services-down
+
+
+## Create db first, then conf, then manage-db, then keystone entries
+
+nova-db:
+  mysql_database.present:
+    - name: nova
+    - connection_user: root
+    - connection_pass: {{ mysql_root_password }}
+    - connection_charset: utf8
+    - saltenv:
+      - LC_ALL: "en_US.utf8"
+    - require:
+      - file: /var/lib/nova/nova.sqlite
+  mysql_user.present:
+    - name: nova
+    - host: localhost
+    - password: {{ nova_password }}
+    - connection_user: root
+    - connection_pass: {{ mysql_root_password }}
+    - require:
+      - file: /var/lib/nova/nova.sqlite
+  mysql_grants.present:
+    - grant: all privileges
+    - database: nova.*
+    - user: nova
+    - connection_user: root
+    - connection_pass: {{ mysql_root_password }}
+    - require:
+      - file: /var/lib/nova/nova.sqlite
+
+
+## Conf: Put the dir there, basic conf files, and example fosskb files:
+
+{% if use_confdir %}
+
+/etc/nova/conf.d:
+  file.recurse:
+    - source: salt://openstack/nova/conf.d
+    - template: jinja
+    # Note: jinja templates are not currently used
+    - require:
+      - mysql_grants: nova-db
+
+/etc/nova/conf.d/00-base.conf:
+  file.symlink:
+    - target: /etc/nova/nova.conf
+    - require:
+      - file: /etc/nova/conf.d
+
+{% for conf in 'nova-api.conf',
+    'nova-cert.conf',
+    'nova-compute.conf',
+    'nova-conductor.conf',
+    'nova-console.conf',
+    'nova-consoleauth.conf',
+    'nova-network.conf',
+    'nova-novncproxy.conf',
+    'nova-scheduler.conf',
+    'nova-spiceproxy.conf' %}
+
+    # 'nova-api-metadata.conf',
+    # 'nova-objectstore.conf',
+
+/etc/init/{{ conf }}:
+  file.replace:
+    - pattern: '--config-file=/etc/nova/nova.conf'
+    - repl: '--config-dir=/etc/nova/conf.d'
+
+{% endfor %}
+
+{% else %}
 
 /etc/nova/nova.conf:
   ini.options_present:
     - sections:
         DEFAULT:
-          # rabbit, fm fosskb: http://fosskb.wordpress.com/2014/10/18/openstack-juno-on-ubuntu-14-10/
-          #rpc_backend = nova.rpc.impl_kombu
-          #rabbit_host = 127.0.0.1
-          #rabbit_password = rabbit
+          debug: True
+          verbose: True
+          logdir: /var/log/nova
+          state_path: /var/lib/nova
+          lock_path: /var/lock/nova
 
+          # LIBVIRT
+          connection_type: libvirt
+          libvirt_use_virtio_for_bridges: True
+
+          # MISC
+          ec2_private_dns_show_ip: True
+          api_paste_config: /etc/nova/api-paste.ini
+          enabled_apis: ec2,osapi_compute,metadata
+
+          # QPID
           rpc_backend: qpid
-          qpid_hostname: localhost
+          qpid_hostname: {{ qpid_host }}
           qpid_tcp_nodelay: True
+
+          # WORKERS
+          workers: 3
+
+          # AUTH
           auth_strategy: keystone
 
+          # IPs, VNC, Spice, Glance
           my_ip: {{ bind_host }}
           vncserver_listen: {{ vnc_host }}
-          #vncserver_proxyclient_address: {{ vnc_host }}
           novncproxy_base_url: http://{{ vnc_host }}:6080/vnc_auto.html
+          vncserver_proxyclient_address: {{ vnc_host }}
           glance_host: {{ bind_host }}
-
           remove_unused_base_images: True
-          # for controller node and compute node nova-network:
-          network_api_class: nova.network.api.API
-          security_group_api: nova
-          # for compute node nova-network:
-          firewall_driver: nova.virt.libvirt.firewall.IptablesFirewallDriver
+
+          # JJW Networking & DHCP, 3/31/15
+          #network_api_class: nova.network.api.API
+          #security_group_api: nova
+          network_size: 254
           network_manager: nova.network.manager.FlatDHCPManager
-          #network_size: 254
-
-          # Neutron stuff from fosskb:
-          #network_api_class=nova.network.neutronv2.api.API
-          #neutron_url=http://10.0.0.1:9696
-          #neutron_auth_strategy=keystone
-          #neutron_admin_tenant_name=service
-          #neutron_admin_username=neutron
-          #neutron_admin_password=neutron_pass
-          #neutron_metadata_proxy_shared_secret=openstack
-          #neutron_admin_auth_url=http://10.0.0.1:35357/v2.0
-          #linuxnet_interface_driver = nova.network.linux_net.LinuxOVSInterfaceDriver
-          #firewall_driver=nova.virt.firewall.NoopFirewallDriver
-          #security_group_api=neutron
-
-          # Also from fosskb:
-          #iscsi_helper=tgtadm
-          #connection_type=libvirt
-          #root_helper=sudo nova-rootwrap /etc/nova/rootwrap.conf
-
-          #vif_plugging_is_fatal: false
-          #vif_plugging_timeout: 0
-
-          # Old, from Salt Grizzly or Icehouse:
-          #allow_same_net_traffic = False
-          #multi_host = False
-          #send_arp_for_ha = True
-          #share_dhcp_address = True
-          #force_dhcp_release = True
-          #flat_network_bridge = br100
-          #flat_interface = {{ salt['pillar.get']('nova:network:interface_name', 'eth0') }}
-          #public_interface = {{ salt['pillar.get']('nova:network:interface_name', 'eth0') }}
+          #network_manager: nova.network.manager.FlatManager
+          firewall_driver: nova.virt.firewall.IptablesFirewallDriver
+          #firewall_driver: nova.virt.firewall.NoopFirewallDriver
+          allow_same_net_traffic: True
+          multi_host: False
+          share_dhcp_address: True
+          force_dhcp_release: True
+          # for flatDHCP:
+          flat_interface: {{ salt['pillar.get']('nova:network:interface_name', 'eth0') }}
+          flat_network_bridge: {{ salt['pillar.get']('nova:network:bridge_name', 'br100') }}
+          flat_injected: True
+          public_interface: {{ salt['pillar.get']('nova:network:interface_name', 'eth0') }}
+          #fixed_range: 10.1.4.0/24
+          dhcpbridge_flagfile: /etc/nova/nova.conf
+          dhcpbridge: /usr/bin/nova-dhcpbridge
 
         database:
           #connection: {{ salt['pillar.get']('keystone:sql:connection', 'mysql://keystone:keystone@localhost/keystone') }}
           connection: mysql://nova:{{ nova_password }}@{{ bind_host }}/nova
+
+        rdp:
+          enabled: True
+          html5_proxy_base_url: http://{{ vnc_host }}:6083/
 
         keystone_authtoken:
           auth_uri: http://{{ bind_host }}:5000
@@ -108,145 +215,170 @@ openstack-nova:
           admin_tenant_name: service
           admin_user: nova
           admin_password: {{ nova_password }}
-    - require:
-      - pkg: openstack-nova
     - backupname: .bak
+    - require:
+      - mysql_grants: nova-db
 
+{% endif %}
 
-#/etc/nova/nova.conf:
-#  file.append:
-#    - text: |
-#        rpc_backend = qpid
-#        qpid_hostname = localhost
-#        qpid_tcp_nodelay = True
-#        auth_strategy = keystone
-#        remove_unused_base_images = True
-#        # for controller node and compute node nova-network:
-#        network_api_class = nova.network.api.API
-#        security_group_api = nova
-#        # for compute node nova-network:
-#        firewall_driver = nova.virt.libvirt.firewall.IptablesFirewallDriver
-#        network_manager = nova.network.manager.FlatDHCPManager
-#        network_size = 254
-#        allow_same_net_traffic = False
-#        multi_host = False
-#        send_arp_for_ha = True
-#        share_dhcp_address = True
-#        force_dhcp_release = True
-#        flat_network_bridge = br100
-#        flat_interface = {{ salt['pillar.get']('nova:network:interface_name', 'eth0') }}
-#        public_interface = {{ salt['pillar.get']('nova:network:interface_name', 'eth0') }}
-#
-#        [keystone_authtoken]
-#        #auth_uri = http://127.0.0.1:5000
-#        #auth_host = 127.0.0.1
-#        #auth_port = 35357
-#        #auth_protocol = http
-#        #admin_tenant_name = service
-#        #admin_user = nova
-#        #admin_password = nova
-#        #service_protocol = {{ salt['pillar.get']('nova:filter_authtoken:service_protocol', 'http') }}
-#        #service_host = {{ salt['pillar.get']('nova:filter_authtoken:service_host', '127.0.0.1') }}
-#        #service_port = {{ salt['pillar.get']('nova:filter_authtoken:service_port', '5000') }}
-#        auth_uri = {{ salt['pillar.get']('nova:filter_authtoken:auth_uri', 'http://127.0.0.1:5000/') }}
-#        auth_host = {{ salt['pillar.get']('nova:filter_authtoken:auth_host', '127.0.0.1') }}
-#        auth_port = {{ salt['pillar.get']('nova:filter_authtoken:auth_port', '35357') }}
-#        auth_protocol = {{ salt['pillar.get']('nova:filter_authtoken:auth_protocol', 'http') }}
-#        admin_tenant_name = {{ salt['pillar.get']('nova:filter_authtoken:admin_tenant_name', 'service') }}
-#        admin_user = {{ salt['pillar.get']('nova:filter_authtoken:admin_user', 'nova') }}
-#        admin_password = {{ salt['pillar.get']('nova:filter_authtoken:admin_password', 'nova') }}
-#
-#    - template: jinja
-#    - backups: minion
-#    - require:
-#      - pkg: openstack-nova
-#    - watch_in:
-#      - service: nova-services
+nova-manage:
+  cmd.run:
+      {% if use_confdir %}
+    - name: nova-manage --config-dir /etc/nova/conf.d db sync
+      {% else %}
+    - name: nova-manage db sync
+      {% endif %}
+    - unless: mysql --password={{ mysql_root_password }} nova -e 'show tables;' |grep instance
+    - require:
+      {% if use_confdir %}
+      - file: /etc/nova/conf.d/00-base.conf
+      {% else %}
+      - ini: /etc/nova/nova.conf
+      {% endif %}
 
+nova-keystone-user:
+  keystone.user_present:
+    - name: nova
+    - password: {{ salt.pillar.get ('nova:password', 'nova') }}
+    #- password: {{ salt['pillar.get']('keystone:nova_password', 'nova') }}
+    - email: {{ salt['pillar.get']('keystone:nova_email', 'joe@eracks.com') }}
+    - roles:
+      - service:
+        - admin
+    - require:
+      - cmd: nova-manage
+
+nova-keystone-service:
+  keystone.service_present:
+    - name: nova
+    - service_type: compute
+    - description: OpenStack Compute
+    - require:
+      - keystone: nova-keystone-user
+
+nova-keystone-endpoint:
+  keystone.endpoint_present:
+    - name: nova
+    - region: regionOne
+    - publicurl: {{ public_url }}
+    - internalurl: {{ public_url }}
+    - adminurl: {{ public_url }}
+    - require:
+      - keystone: nova-keystone-service
 
 nova-support:
   service:
     - running
     - enable: True
+    - init-delay: 2
     - names:
       - mysql
       - qpidd
       - libvirt-bin
       - dbus
+    - require:
+      - keystone: nova-keystone-service
 
-nova-services:
+nova-services-up:
   service:
     - running
     - enable: True
+    - init-delay: 3
     - names:
       - nova-api
-      - nova-objectstore
-      - nova-compute
-      - nova-network
-      #- nova-volume
-      - nova-scheduler
       - nova-cert
-      - nova-api-metadata
+      - nova-compute
+      - nova-conductor
+      - nova-consoleauth
+      - nova-console
+      - nova-network
       - nova-novncproxy
+      - nova-scheduler
       - nova-spiceproxy
-    #- watch:
-      #- cmd: nova-db-init
-      #- cmd: keystone-db-init
-      #- service: glance-services
+      #- nova-objectstore
+      #- nova-volume
+      #- nova-api-metadata
     - require:
       - service: nova-support
-      - ini: /etc/nova/nova.conf
-
-
-nova-db-init:
-  cmd:
-    - run
-    - name: openstack-db --init --service nova --rootpw '{{ mysql_root_password }}'
-    - unless: echo '' | mysql nova --password='{{ mysql_root_password }}'
-    - require:
-      - pkg: openstack-nova
-      - ini: /etc/nova/nova.conf
-      - service: nova-support
-
-nova-keystone-creates:
-  cmd:
-    - run
-    - name: |
-        export OS_USERNAME=admin
-        export OS_PASSWORD={{ admin_password }}
-        export OS_AUTH_URL={{ admin_url }}
-        export OS_TENANT_NAME=admin
-        keystone user-create --name=nova --pass={{ salt['pillar.get']('keystone:nova_password', 'nova') }} --email={{ salt['pillar.get']('keystone:nova_email', 'joe@eracks.com') }}
-        keystone user-role-add --user=nova --tenant=service --role=admin
-        #keystone user-role-add --user=nova --tenant=service --role=admin
-        keystone service-create --name=nova --type=compute --description="OpenStack Compute"
-        keystone endpoint-create --service=nova --publicurl='{{ public_url }}' --internalurl='{{ public_url }}' --adminurl='{{ public_url }}'
-    - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin endpoint-get --service compute
-    - require:
-      - pkg: openstack-nova
-      - ini: /etc/nova/nova.conf
-      - service: keystone-service
-
 
 nova-network-setup:
   cmd:
     - run
+    - cwd: {{ home_dir }}
     - name: |
-        nova-manage network create --fixed_range_v4 10.1.4.0/24 --bridge br100 net1
-        for i in {129..136}; do nova-manage floating create --ip_range 216.172.133.$i --pool=nova; done
+        source ostack-creds.source
+        #export netname=net10
+        {% if use_confdir %}
+        echo nova-manage --config-dir /etc/nova/conf.d network create --fixed_range_v4 10.1.4.0/24 --network_size 254 --bridge br100 --bridge_interface eth0 {{ netname }}
+        nova-manage --config-dir /etc/nova/conf.d network create --fixed_range_v4 10.1.4.0/24 --network_size 254 --bridge br100 --bridge_interface eth0 {{ netname }}
+        {% else %}
+        echo nova-manage network create --fixed_range_v4 10.1.4.0/24 --network_size 254 --bridge br100 --bridge_interface eth0 {{ netname }}
+        nova-manage network create --fixed_range_v4 10.1.4.0/24 --network_size 254 --bridge br100 --bridge_interface eth0 {{ netname }}
+        {% endif %}
+        export netid=$(nova net-list | grep {{ netname }} | awk '{print $2}')
+        echo nova network-associate-host $netid openstack14
+        nova network-associate-host $netid openstack14
+        #for i in {129..136}; do nova-manage floating create --ip_range 216.172.133.$i --pool=nova; done
+    - unless: source ostack-creds.source && nova net-list | grep {{ netname }}
     - require:
-      - cmd: nova_keystone_creates
+      - service: nova-services-up
 
-# JJW this is the wrong approach, blasting all the existing package-manager supplied files..
-# need ini_manage - in the meantime, comment out
-#
-#/etc/nova:
-#  file:
-#    - recurse
-#    - source: salt://openstack/nova/files
-#    - template: jinja
+nova-keypair-setup:
+  cmd:
+    - run
+    - cwd: {{ home_dir }}
+    - name: |
+        source ostack-creds.source
+        echo nova keypair-add --pub-key {{ key1 }} {{ key1_name }}
+        nova keypair-add --pub-key {{ key1 }} {{ key1_name }}
+        echo nova keypair-add --pub-key {{ key2 }} {{ key2_name }}
+        nova keypair-add --pub-key {{ key2 }} {{ key2_name }}
+    - unless: source ostack-creds.source && nova keypair-list | grep {{ key1_name }}
+    - require:
+      - service: nova-services-up
+
+nova-default-security-setup:
+  cmd:
+    - run
+    - cwd: {{ home_dir }}
+    - name: |
+        source ostack-creds.source
+        echo nova secgroup-add-default-rule icmp 0 0 0.0.0.0/0
+        nova secgroup-add-default-rule icmp 0 0 0.0.0.0/0
+        echo nova secgroup-add-default-rule udp 1 65535 0.0.0.0/0
+        nova secgroup-add-default-rule udp 1 65535 0.0.0.0/0
+        echo nova secgroup-add-default-rule tcp 1 65535 0.0.0.0/0
+        nova secgroup-add-default-rule tcp 1 65535 0.0.0.0/0
+    - unless: source ostack-creds.source && nova secgroup-list-default-rules | grep tcp
+    - require:
+      - service: nova-services-up
+
+#nova-db-init:
+#  cmd:
+#    - run
+#    - name: openstack-db --init --service nova --rootpw '{{ mysql_root_password }}'
+#    - unless: echo '' | mysql nova --password='{{ mysql_root_password }}'
 #    - require:
 #      - pkg: openstack-nova
-#    - watch_in:
-#      - service: nova-services
+#      - ini: /etc/nova/nova.conf
+#      - service: nova-support
+
+#nova-keystone-creates:
+#  cmd:
+#    - run
+#    - name: |
+#        export OS_USERNAME=admin
+#        export OS_PASSWORD={{ admin_password }}
+#        export OS_AUTH_URL={{ admin_url }}
+#        export OS_TENANT_NAME=admin
+#        keystone user-create --name=nova --pass={{ salt['pillar.get']('keystone:nova_password', 'nova') }} --email={{ salt['pillar.get']('keystone:nova_email', 'joe@eracks.com') }}
+#        keystone user-role-add --user=nova --tenant=service --role=admin
+#        #keystone user-role-add --user=nova --tenant=service --role=admin
+#        keystone service-create --name=nova --type=compute --description="OpenStack Compute"
+#        keystone endpoint-create --service=nova --publicurl='{{ public_url }}' --internalurl='{{ public_url }}' --adminurl='{{ public_url }}'
+#    - unless: keystone --os-username admin --os-password {{ admin_password }} --os-auth-url {{ admin_url }} --os-tenant-name admin endpoint-get --service compute
+#    - require:
+#      - pkg: openstack-nova
+#      - ini: /etc/nova/nova.conf
+#      - service: keystone-service
 

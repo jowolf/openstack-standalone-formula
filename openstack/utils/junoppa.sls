@@ -2,7 +2,7 @@
 #juno-ppa:
 #  pkgrepo.managed:
 #    - humanname: Juno PPA
-#    #- name: 
+#    #- name:
 #    - ppa: cloud-archive/juno
 #    - dist: trusty
 #    #- file: /etc/apt/sources.list.d/logstash.list
@@ -13,8 +13,8 @@ juno-ppa:
   cmd.run:
     - name: add-apt-repository -y cloud-archive:juno
     - require_in:
-      - pkg: openstack-keystone
-      - pkg: openstack-nova
-      - pkg: openstack-glance
+      - pkg: keystone-pkgs
+      - pkg: nova-pkgs
+      - pkg: glance-pkgs
       - pkg: horizon
       - pkg: cinder-pkgs
