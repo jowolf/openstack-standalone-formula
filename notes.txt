@@ -1,3 +1,33 @@
+4/5/15
+
+1) fixed typo (215 was supposed to be 216)
+2) libvirt & kvm/qemu source is helpful
+3) put together global OSS Browser with indexing / 'ctabs' to brtowse source call tree :)
+4) spice problem was from typo - re-test
+5) leftover state wasn't getting deleted from libvirt & nova dirs - deleted in ostack-clean now
+6) last stmt in ostack-clean returns rslt - add 'echo done' :)
+7) Noop firewall is nova.virt.firewall.NoopFirewallDriver, but IptablesFirewallDriver is in
+    nova.virt.libvirt.firewall.IptablesFirewallDriver - the one in nova.virt.firewall is just a
+    parent class, which returns False to 'is valid filter' call. Grr.
+    Plus, this missing filter shows up in nova-conductor and libvirt logs as
+    "Could not find filter: instance-instance-0000001", saying NOTHING about the missing firewall driver.
+    Grrrr.
+
+4/4/15
+
+/etc/libvirt/libvirtd.conf:
+  ini.options_present:
+    DEFAULT_IMPLICIT:
+      listen_addr: 127.0.0.1
+      log_level: 1
+      log_buffer_size: 0
+
+- utility to tell what .deb pkg contains which files
+    https://www.debian.org/doc/manuals/debian-faq/ch-pkgtools.en.html 8.5:
+    dpkg --search filename
+    dlocate -S  filename
+    apt-file search foo
+
 3/31/15
 OK eveything's converted to salt and working, but nova won't work with conf.d approach,
 due to dhcpbridge, fired off by dnsmasq.

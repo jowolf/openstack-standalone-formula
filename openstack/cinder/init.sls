@@ -80,6 +80,7 @@ cinder-services-down:
           #rabbit_userid = guest
           #rabbit_password = rabbit
           glance_host: {{ bind_host }}
+          osapi_volume_workers: 3
           rpc_backend: qpid
           qpid_hostname: " {{ qpid_host }}"
           qpid_port: " {{ qpid_port }}"

@@ -70,6 +70,8 @@ keystone-db:
           #use_syslog:   {{ salt['pillar.get']('keystone:use_syslog', 'False') }}
           #log_file:     {{ salt['pillar.get']('keystone:log_file', '/var/log/keystone/keystone.log') }}
           idle_timeout: {{ salt['pillar.get']('keystone:sql:idle_timeout', '200') }}
+          admin_workers: 3
+          public_workers: 3
         token:
           expiration: {{ salt['pillar.get']('keystone:token:expiration', '86400') }}
         database:
