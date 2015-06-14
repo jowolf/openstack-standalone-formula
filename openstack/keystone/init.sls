@@ -66,7 +66,7 @@ keystone-db:
           admin_token:  {{ token }}
           compute_port: {{ salt['pillar.get']('keystone:compute_port', '8774') }}
           verbose:      {{ salt['pillar.get']('keystone:verbose', 'True') }}
-          debug:        {{ salt['pillar.get']('keystone:debug', 'True') }}
+          debug:        {{ salt['pillar.get']('keystone:debug', 'False') }}
           #use_syslog:   {{ salt['pillar.get']('keystone:use_syslog', 'False') }}
           #log_file:     {{ salt['pillar.get']('keystone:log_file', '/var/log/keystone/keystone.log') }}
           idle_timeout: {{ salt['pillar.get']('keystone:sql:idle_timeout', '200') }}

@@ -1,3 +1,50 @@
+4/12/15
+d NAT working, albeit with floating IP
+
+Todo:
+d Vervet instance
+Vervet desktop
+n --swap=12G
+n zcache
+t zram
+
+Stymied: blank yellow screen on lubuntu spice - same w/spicec client, libvirt VMM not working (older Maya).
+
+
+auto-save snapshot/image in nova script
+
+dl win2012 instance
+ubuntu L&F -> eRacks OpenStack Dashboard
+scripts / scaffolding for easier launches
+volumes? ceph?
+
+boot from cdrom
+ - test with LXLE
+p memory compression
+docker integration
+ostack addon from latest admin
+tor hveem's salt-virt
+
+python jenkins equiv
+
+OSBD salt - 2x firewall?
+
+2nd dns server setup
+
+eRacks list
+NAS72
+fixtures
+
+Interesting:
+
+joe@trust2:~$ lynx 169.254.169.254/latest
+Looking up  '169.254.169.254' first
+joe@trust2:~$ lynx 169.254.169.254/latest/meta-data
+Looking up  '169.254.169.254' first
+joe@trust2:~$ lynx 169.254.169.254/latest/meta-data/block-device-mapping
+Looking up  '169.254.169.254' first
+
+
 4/5/15
 
 1) fixed typo (215 was supposed to be 216)

@@ -46,6 +46,7 @@ nova-pkgs:
       - nova-compute
       - nova-console
       - nova-network
+      - conntrack
       #- nova-objectstore
       #- nova-volume
       #- nova-api-metadata  # now included in nova-api
@@ -206,13 +207,12 @@ nova-db:
 
           # IPs, VNC, Spice, Glance
           my_ip: {{ bind_host }}
-          #
           vnc_enabled: False
           #vnc_port: 5900
           vncserver_listen: {{ vnc_host }}
           vncserver_proxyclient_address: {{ vnc_host }}
           novncproxy_base_url: http://{{ vnc_host }}:6080/vnc_auto.html
-          #
+          # spice
           spicehtml5proxy_host: {{ vnc_host }}
           spicehtml5proxy_port: 6082
           glance_host: {{ bind_host }}
@@ -250,7 +250,6 @@ nova-db:
         #  enabled: True
         #  html5_proxy_base_url: http://{{ vnc_host }}:6083/
 
-        #
         spice:
           agent_enabled: True
           enabled: True
@@ -270,13 +269,16 @@ nova-db:
     - require:
       - mysql_grants: nova-db
 
-/etc/libvirt/libvirtd.conf:
-  ini.options_present:
-    - sections:
-        DEFAULT_IMPLICIT:
-          listen_addr: '"127.0.0.1"'
-          log_level: 1
-          log_buffer_size: 0
+
+# debug no longer needed JJW 4/12/15
+#
+#/etc/libvirt/libvirtd.conf:
+#  ini.options_present:
+#    - sections:
+#        DEFAULT_IMPLICIT:
+#          listen_addr: '"127.0.0.1"'
+#          log_level: 1
+#          log_buffer_size: 0
 
 {% endif %}
 
@@ -378,7 +380,7 @@ nova-network-setup:
         export netid=$(nova net-list | grep {{ netname }} | awk '{print $2}')
         echo nova network-associate-host $netid openstack14
         nova network-associate-host $netid openstack14
-        #for i in {129..136}; do nova-manage floating create --ip_range 216.172.133.$i --pool=nova; done
+        for i in {129..136}; do nova-manage floating create --ip_range 216.172.133.$i --pool=nova; done
     - unless: source ostack-creds.source && nova net-list | grep {{ netname }}
     - require:
       - service: nova-services-up
@@ -421,10 +423,15 @@ nova-boot-first-vm:
     - cwd: {{ home_dir }}
     - name: |
         source ostack-creds.source
+        sleep 5
         export netid=$(nova net-list | grep {{ netname }} | awk '{print $2}')
         echo using network {{ netname }} : $netid
-        echo nova boot --flavor m1.small --image trusty --key-name joe-openstack14 --key-name mintstudio-maya --nic net-id=$netid,v4-fixed-ip=10.1.4.2 --user-data=cloud16.yaml --config-drive true trust2
-        nova boot --flavor m1.small --image trusty --key-name joe-openstack14 --key-name mintstudio-maya --nic net-id=$netid,v4-fixed-ip=10.1.4.2 --user-data=cloud16.yaml --config-drive true trust2
+        #echo nova boot --flavor m1.small --image trusty --key-name joe-openstack14 --key-name mintstudio-maya --nic net-id=$netid,v4-fixed-ip=10.1.4.2 --user-data=cloud16.yaml --config-drive true trust2
+        #nova boot --flavor m1.small --image trusty --key-name joe-openstack14 --key-name mintstudio-maya --nic net-id=$netid,v4-fixed-ip=10.1.4.2 --user-data=cloud16.yaml --config-drive true trust2
+        echo nova boot --flavor m1.small --image trusty --key-name joe-openstack14 --key-name mintstudio-maya --nic net-id=$netid --user-data=cloud16.yaml --config-drive true --poll trust2
+        nova boot --flavor m1.small --image trusty --key-name joe-openstack14 --key-name mintstudio-maya --nic net-id=$netid --user-data=cloud16.yaml --config-drive true --poll trust2
+        echo nova floating-ip-associate trust2 216.172.133.129
+        nova floating-ip-associate trust2 216.172.133.129
     - unless: source ostack-creds.source && nova list| grep trust2
     - require:
       - service: nova-services-up
